@@ -1,0 +1,125 @@
+<html>
+  <head>
+    <title></title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link rel="stylesheet" href="bower_components/animate.css/animate.min.css" charset="utf-8">
+    <script type="text/javascript" charset="utf-8" src="bower_components/angular/angular.js"></script>
+    <script type="text/javascript" charset="utf-8" src="bower_components/contentful/dist/contentful.min.js"></script>
+    <script type="text/javascript" charset="utf-8" src="bower_components/ng-contentful/ng-contentful.js"></script>
+    <script charset="utf-8">
+
+      var myApp = angular.module('myApp', ['ng-contentful']);
+
+      myApp.config(function (contentfulClientProvider) {
+       contentfulClientProvider.setOptions({
+         // any other options, see contentful.js documentation
+       });
+       contentfulClientProvider.setSpaceId('09ken994rxqa');
+       contentfulClientProvider.setAccessToken('d7c05521d6471808d1b3603e0fa3bca3595f0cc9911baa71a1304e48b6f11bdf');
+      });
+
+      myApp.service("DailyTip", ["contentfulClient", function (contentfulClient) {
+        var resourceId = "h8ov1Az6BaICwswqSI8iG";
+        return {
+          query: function (options){
+            if(options === undefined)
+              options = {};
+            options.content_type = resourceId;
+            return contentfulClient.entries(options);
+          }
+        };
+      }]);
+
+      myApp.controller("ApplicationController", function ApplicationController($scope, DailyTip) {
+        var totalTips = null, allowScrolling = false;
+        $scope.tips = [];
+        $scope.locale = "it";
+        $scope.tipClass = "";
+        $scope.randomTip = function () {
+          allowScrolling = false;
+          // setTimeout(function () {
+          //   allowScrolling = true;
+          // }, 1500);
+          var random = 0;
+          if(totalTips !== null){
+            random = Math.random() * (totalTips) << 0;
+          }
+          DailyTip.query({
+            locale: $scope.locale,
+            limit: 1,
+            skip: random
+          }).then(function (response) {
+            allowScrolling = true;
+            totalTips = response.total;
+            $scope.tips.push(response[0]);
+          });
+        };
+
+        $scope.isLast = function (index) {
+          return ($scope.tips.length == index + 1);
+        };
+
+        $scope.randomTip();
+
+        if(document.ontouchstart === undefined)
+          document.onclick = function (event) {
+            event.preventDefault();
+            if(allowScrolling){
+              $scope.randomTip();
+            }
+          };
+
+        document.ontouchmove = function (event) {
+          event.preventDefault();
+          if(allowScrolling)
+            $scope.randomTip();
+        }
+      });
+
+    </script>
+
+    <style media="screen">
+      html{
+        overflow: hidden;
+      }
+      ul#daily-tips{
+        display: block;
+        position: relative;
+        list-style: none;
+        margin: auto;
+        top: 30%;
+        text-align: center;
+        padding: 0;
+        font-size: 30px;
+      }
+      @media (min-width: 768px){
+        ul#daily-tips{width: 50%;}
+      }
+      ul#daily-tips li.last{
+        /*background: yellow;*/
+      }
+      ul#daily-tips li.not-last{
+        top: -500px;
+      }
+      ul#daily-tips li{
+        position: absolute;
+        top: 0px;
+        -webkit-transition: top .5s ease;
+        padding: 20px 10px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        background: white;
+      }
+    </style>
+  </head>
+  <body ng-app="myApp" ng-controller="ApplicationController">
+    <ul id="daily-tips">
+      <li ng-bind = "tip.fields.description" ng-repeat="tip in tips" ng-class="{'animated zoomInDown': isLast($index), 'last': isLast($index), 'animated fadeOutDown': !isLast($index)}" ng-class="tipClass">
+      </li>
+    </ul>
+    <select ng-model="locale" ng-change="randomTip()">
+      <option value="it">Italian</option>
+      <option value="en-US">English</option>
+    </select>
+  </body>
+</html>
